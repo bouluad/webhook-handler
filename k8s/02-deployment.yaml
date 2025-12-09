@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-handler
+  labels:
+    app: webhook-handler
+spec:
+  replicas: 2 # Start with 2 replicas for high availability
+  selector:
+    matchLabels:
+      app: webhook-handler
+  template:
+    metadata:
+      labels:
+        app: webhook-handler
+    spec:
+      containers:
+      - name: webhook-handler-app
+        image: webhook-handler:latest # Replace with your ACR path
+        ports:
+        - containerPort: 8080
+        env:
+          # Load secrets from the Kubernetes Secret resource
+        - name: GITHUB_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: github-webhook-secrets
+              key: GITHUB_WEBHOOK_SECRET
+        - name: AZURE_SERVICE_BUS_CONN_STRING
+          valueFrom:
+            secretKeyRef:
+              name: github-webhook-secrets
+              key: AZURE_SERVICE_BUS_CONN_STRING
+        - name: AZURE_SERVICE_BUS_QUEUE_NAME
+          valueFrom:
+            secretKeyRef:
+              name: github-webhook-secrets
+              key: AZURE_SERVICE_BUS_QUEUE_NAME
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          timeoutSeconds: 3
